@@ -210,4 +210,19 @@ ticket_participant
 КОНЕЦ ДОКУМЕНТА
 ----------------------------------------------------------------
 """
-``
+# below documentation block
+
+async def create_ticket(user_id: str, data: dict):
+    raise NotImplementedError
+
+
+async def join_ticket(user_id: str, ticket_id: str):
+    raise NotImplementedError
+
+
+async def leave_ticket(user_id: str, ticket_id: str):
+    raise NotImplementedError
+
+
+async def change_status(user_id: str, ticket_id: str, new_status: str):
+    raise NotImplementedError
