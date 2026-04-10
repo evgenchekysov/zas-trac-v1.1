@@ -200,17 +200,63 @@ UI-КОНТРАКТ (КНОПКИ)
 
 # ---- СИГНАТУРЫ СЕРВИСА (РЕАЛИЗАЦИЯ БУДЕТ ДОБАВЛЕНА ПОЗЖЕ) ----
 
-async def create_ticket(user_id: str, data: dict):
-    raise NotImplementedError
+   async def create_ticket(user_id: str, data: dict):
+    # create NEW ticket, creator is always participant
 
+    ticket_id = data["ticket_id"]
+
+    ticket = Ticket(
+        id=ticket_id,
+        creator_id=user_id,
+    )
+
+    ticket.participants.add(user_id)
+
+    return ticket
 
 async def join_ticket(user_id: str, ticket_id: str):
-    raise NotImplementedError
+    # domain logic only, no I/O here
+
+    ticket = get_ticket_by_id(ticket_id)  # ожидается внешний слой
+
+    if ticket.status in {TicketStatus.DONE, TicketStatus.CANCELLED}:
+        raise ParticipantError("Cannot join closed ticket")
+
+    if user_id in ticket.participants:
+        raise ParticipantError("User already participant")
+
+    ticket.participants.add(user_id)
+
+    return ticket
 
 
 async def leave_ticket(user_id: str, ticket_id: str):
-    raise NotImplementedError
+    ticket = get_ticket_by_id(ticket_id)
+
+    if user_id not in ticket.participants:
+        raise ParticipantError("User not a participant")
+
+    if ticket.status in {TicketStatus.DONE, TicketStatus.CANCELLED}:
+        raise ParticipantError("Cannot leave closed ticket")
+
+    if len(ticket.participants) == 1:
+        raise ParticipantError("Last participant cannot leave ticket")
+
+    ticket.participants.remove(user_id)
+
+    return ticket 
 
 
 async def change_status(user_id: str, ticket_id: str, new_status: str):
-    raise NotImplementedError
+    ticket = get_ticket_by_id(ticket_id)
+
+    target_status = TicketStatus(new_status)
+
+    if target_status not in ALLOWED_STATUS_TRANSITIONS[ticket.status]:
+        raise InvalidStatusTransition(
+            f"Transition {ticket.status} → {target_status} is not allowed"
+        )
+
+    ticket.status = target_status
+
+    return ticket
