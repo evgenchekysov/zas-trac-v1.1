@@ -123,20 +123,60 @@ ZAS-TRAC — Session Service
 -------------------------------------------------
 """
 
+from core.ticket import TicketStatus
+from core.errors import TicketError
 
-# ---- СИГНАТУРЫ SESSION SERVICE (РЕАЛИЗАЦИЯ БУДЕТ ДОБАВЛЕНА ПОЗЖЕ) ----
+# ---- SESSION SERVICE ----
 
 async def start_session(user_id: str, ticket_id: str):
-    raise NotImplementedError
+    ticket = get_ticket_by_id(ticket_id)
+
+    # нельзя стартовать для закрытого тикета
+    if ticket.status in {TicketStatus.DONE, TicketStatus.CANCELLED}:
+        raise TicketError("Cannot start session for closed ticket")
+
+    # одна активная сессия на пользователя
+    active_session = get_active_session(user_id)
+    if active_session:
+        stop_session_internal(active_session, paused=True)
+
+    # первый старт активирует тикет
+    if ticket.status == TicketStatus.NEW:
+        ticket.status = TicketStatus.ACTIVE
+
+    session = create_session_internal(
+        user_id=user_id,
+        ticket_id=ticket_id,
+    )
+
+    return session
 
 
-async def stop_session(user_id: str, ticket_id: str):
-    raise NotImplementedError
+async def stop_session(user_id: str):
+    active_session = get_active_session(user_id)
+
+    if not active_session:
+        return None
+
+    stop_session_internal(active_session, paused=True)
+    return active_session
 
 
-async def get_active_session(user_id: str, ticket_id: str):
+async def get_active_session(user_id: str):
     raise NotImplementedError
 
 
 async def list_ticket_sessions(ticket_id: str):
     raise NotImplementedError
+
+
+# ---- REACTIONS TO TICKET STATUS CHANGE ----
+
+def handle_ticket_status_change(ticket, old_status, new_status):
+    # DONE и PAUSED завершают активные сессии
+    if new_status in {TicketStatus.DONE, TicketStatus.PAUSED}:
+        sessions = get_active_sessions_by_ticket(ticket.id)
+
+        for session in sessions:
+            stop_session_internal(session, completed=True)
+
