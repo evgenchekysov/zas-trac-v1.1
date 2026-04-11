@@ -196,67 +196,135 @@ UI-КОНТРАКТ (КНОПКИ)
 КОНЕЦ АРХИТЕКТУРНОГО КОНТРАКТА
 -------------------------------------------------
 """
+from uuid import UUID
+from core.errors import NotFound, Forbidden, InvalidTransition
+from core.ticket import TicketStatus
 
 
-# ---- СИГНАТУРЫ СЕРВИСА (РЕАЛИЗАЦИЯ БУДЕТ ДОБАВЛЕНА ПОЗЖЕ) ----
+class TicketService:
+    def __init__(
+        self,
+        ticket_repo,
+        session_repo,
+        audit_service,
+        session_service,
+    ):
+        self.ticket_repo = ticket_repo
+        self.session_repo = session_repo
+        self.audit = audit_service
+        self.session_service = session_service
 
-   async def create_ticket(user_id: str, data: dict):
-    # create NEW ticket, creator is always participant
+    # -------------------------------------------------
+    # STATUS AGGREGATION
+    # -------------------------------------------------
 
-    ticket_id = data["ticket_id"]
+    async def recalc_status(self, ticket_id: UUID):
+        """
+        Агрегирует статус заявки на основе сессий.
+        Вызывается после start/stop session.
+        """
 
-    ticket = Ticket(
-        id=ticket_id,
-        creator_id=user_id,
-    )
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
 
-    ticket.participants.add(user_id)
+        
+# DONE и CLOSED — финальные, не агрегируем
+    if ticket.status in {TicketStatus.DONE, TicketStatus.CLOSED}:
+        return ticket.status
 
-    return ticket
-
-async def join_ticket(user_id: str, ticket_id: str):
-    # domain logic only, no I/O here
-
-    ticket = get_ticket_by_id(ticket_id)  # ожидается внешний слой
-
-    if ticket.status in {TicketStatus.DONE, TicketStatus.CANCELLED}:
-        raise ParticipantError("Cannot join closed ticket")
-
-    if user_id in ticket.participants:
-        raise ParticipantError("User already participant")
-
-    ticket.participants.add(user_id)
-
-    return ticket
-
-
-async def leave_ticket(user_id: str, ticket_id: str):
-    ticket = get_ticket_by_id(ticket_id)
-
-    if user_id not in ticket.participants:
-        raise ParticipantError("User not a participant")
-
-    if ticket.status in {TicketStatus.DONE, TicketStatus.CANCELLED}:
-        raise ParticipantError("Cannot leave closed ticket")
-
-    if len(ticket.participants) == 1:
-        raise ParticipantError("Last participant cannot leave ticket")
-
-    ticket.participants.remove(user_id)
-
-    return ticket 
+    # ✅ ЗАЩИТА NEW / ASSIGNED (рекомендуемый вариант)
+    if ticket.status in {TicketStatus.NEW, TicketStatus.ASSIGNED}:
+        return ticket.status
 
 
-async def change_status(user_id: str, ticket_id: str, new_status: str):
-    ticket = get_ticket_by_id(ticket_id)
-
-    target_status = TicketStatus(new_status)
-
-    if target_status not in ALLOWED_STATUS_TRANSITIONS[ticket.status]:
-        raise InvalidStatusTransition(
-            f"Transition {ticket.status} → {target_status} is not allowed"
+        active_sessions = await self.session_repo.count_active_sessions(
+            ticket_id
         )
 
-    ticket.status = target_status
+        new_status = (
+            TicketStatus.IN_PROGRESS
+            if active_sessions > 0
+            else TicketStatus.PAUSED
+        )
 
-    return ticket
+        if new_status != ticket.status:
+            await self.ticket_repo.update_status(ticket_id, new_status)
+
+            await self.audit.log_event(
+                type="ticket_status_aggregated",
+                payload={
+                    "ticket_id": str(ticket_id),
+                    "status": new_status.value,
+                },
+            )
+
+        return new_status
+
+    # -------------------------------------------------
+    # MARK DONE
+    # -------------------------------------------------
+
+    async def mark_done(self, ticket_id: UUID, user_id: UUID):
+        """
+        Завершение работ по заявке.
+        Может быть выполнено ЛЮБЫМ participant.
+        """
+
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        if ticket.status in {TicketStatus.DONE, TicketStatus.CLOSED}:
+            raise InvalidTransition("ticket already finished")
+
+        if not await self.ticket_repo.is_participant(ticket_id, user_id):
+            raise Forbidden("user is not participant")
+
+        # 1. Переводим заявку в DONE
+        await self.ticket_repo.update_status(ticket_id, TicketStatus.DONE)
+
+        await self.audit.log_event(
+            type="ticket_marked_done",
+            payload={
+                "ticket_id": str(ticket_id),
+                "user_id": str(user_id),
+            },
+        )
+
+        # 2. Завершаем ВСЕ активные сессии
+        await self.session_service.handle_ticket_done(ticket_id)
+
+        return TicketStatus.DONE
+
+    # -------------------------------------------------
+    # CLOSE TICKET
+    # -------------------------------------------------
+
+    async def close_ticket(self, ticket_id: UUID, user_id: UUID, is_admin: bool):
+        """
+        Финальное закрытие заявки.
+        Допустимо только из DONE.
+        """
+
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        if ticket.status != TicketStatus.DONE:
+            raise InvalidTransition("ticket must be DONE before closing")
+
+        if not (is_admin or ticket.owner_id == user_id):
+            raise Forbidden("only owner or admin can close ticket")
+
+        await self.ticket_repo.update_status(ticket_id, TicketStatus.CLOSED)
+
+        await self.audit.log_event(
+            type="ticket_closed",
+            payload={
+                "ticket_id": str(ticket_id),
+                "user_id": str(user_id),
+            },
+        )
+
+        return TicketStatus.CLOSED
