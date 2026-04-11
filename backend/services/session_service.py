@@ -122,61 +122,136 @@ ZAS-TRAC — Session Service
 КОНЕЦ АРХИТЕКТУРНОГО КОНТРАКТА
 -------------------------------------------------
 """
+ZAS-TRAC — Session Service
+=========================
 
-from core.ticket import TicketStatus
-from core.errors import TicketError
+Session Service отвечает ТОЛЬКО за учёт рабочего времени.
+Не управляет статусами заявок и не принимает решений о них.
+"""
 
-# ---- SESSION SERVICE ----
-
-async def start_session(user_id: str, ticket_id: str):
-    ticket = get_ticket_by_id(ticket_id)
-
-    # нельзя стартовать для закрытого тикета
-    if ticket.status in {TicketStatus.DONE, TicketStatus.CANCELLED}:
-        raise TicketError("Cannot start session for closed ticket")
-
-    # одна активная сессия на пользователя
-    active_session = get_active_session(user_id)
-    if active_session:
-        stop_session_internal(active_session, paused=True)
-
-    # первый старт активирует тикет
-    if ticket.status == TicketStatus.NEW:
-        ticket.status = TicketStatus.ACTIVE
-
-    session = create_session_internal(
-        user_id=user_id,
-        ticket_id=ticket_id,
-    )
-
-    return session
+from uuid import UUID
+from core.errors import NotFound, Forbidden
 
 
-async def stop_session(user_id: str):
-    active_session = get_active_session(user_id)
+class SessionService:
+    def __init__(self, session_repo, ticket_repo, audit_service):
+        self.session_repo = session_repo
+        self.ticket_repo = ticket_repo
+        self.audit = audit_service
 
-    if not active_session:
-        return None
+    # -------------------------------------------------
+    # START SESSION
+    # -------------------------------------------------
 
-    stop_session_internal(active_session, paused=True)
-    return active_session
+    async def start_session(self, user_id: UUID, ticket_id: UUID):
+        """
+        Начало рабочей сессии.
+        Единственный публичный способ начать работу.
+        """
 
+        # 1. Проверяем, что заявка существует
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
 
-async def get_active_session(user_id: str):
-    raise NotImplementedError
+        # 2. Проверяем participation
+        if not await self.ticket_repo.is_participant(ticket_id, user_id):
+            raise Forbidden("user is not participant of this ticket")
 
+        # 3. Проверяем активную сессию пользователя
+        active = await self.session_repo.get_active_session(user_id)
 
-async def list_ticket_sessions(ticket_id: str):
-    raise NotImplementedError
+        # 4. Auto‑pause предыдущей сессии (если была)
+        if active:
+            await self.session_repo.stop_session(
+                session_id=active.id,
+                reason="auto_paused",
+            )
 
+            await self.audit.log_event(
+                type="session_auto_paused",
+                payload={
+                    "session_id": str(active.id),
+                    "ticket_id": str(active.ticket_id),
+                    "user_id": str(user_id),
+                },
+            )
 
-# ---- REACTIONS TO TICKET STATUS CHANGE ----
+        # 5. Создаём новую сессию
+        session = await self.session_repo.create_session(
+            ticket_id=ticket_id,
+            user_id=user_id,
+        )
 
-def handle_ticket_status_change(ticket, old_status, new_status):
-    # DONE и PAUSED завершают активные сессии
-    if new_status in {TicketStatus.DONE, TicketStatus.PAUSED}:
-        sessions = get_active_sessions_by_ticket(ticket.id)
+        # 6. Audit
+        await self.audit.log_event(
+            type="session_started",
+            payload={
+                "session_id": str(session.id),
+                "ticket_id": str(ticket_id),
+                "user_id": str(user_id),
+            },
+        )
+
+        return session
+
+    # -------------------------------------------------
+    # STOP ACTIVE SESSION
+    # -------------------------------------------------
+
+    async def stop_active_session(self, user_id: UUID):
+        """
+        Останавливает ТОЛЬКО текущую активную сессию пользователя.
+        Idempotent: если активной сессии нет — ничего не делает.
+        """
+
+        active = await self.session_repo.get_active_session(user_id)
+
+        if not active:
+            return None
+
+        await self.session_repo.stop_session(
+            session_id=active.id,
+            reason="stopped_by_user",
+        )
+
+        await self.audit.log_event(
+            type="session_stopped",
+            payload={
+                "session_id": str(active.id),
+                "ticket_id": str(active.ticket_id),
+                "user_id": str(user_id),
+            },
+        )
+
+        return active
+
+    # -------------------------------------------------
+    # REACTIONS FROM TICKET SERVICE
+    # -------------------------------------------------
+
+    async def handle_ticket_done(self, ticket_id: UUID):
+        """
+        Реакция на перевод заявки в DONE.
+        Вызывается ONLY из Ticket Service.
+        """
+
+        sessions = await self.session_repo.get_active_sessions_by_ticket(
+            ticket_id
+        )
 
         for session in sessions:
-            stop_session_internal(session, completed=True)
+            await self.session_repo.stop_session(
+                session_id=session.id,
+                reason="status_done",
+            )
 
+            await self.audit.log_event(
+                type="session_stopped_due_done",
+                payload={
+                    "session_id": str(session.id),
+                    "ticket_id": str(ticket_id),
+                    "user_id": str(session.user_id),
+                },
+            )
+          
