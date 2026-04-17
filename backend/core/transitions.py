@@ -1,4 +1,4 @@
-from core.ticket import TicketStatus
+from domain.ticket import TicketStatus
 
 ALLOWED_STATUS_TRANSITIONS: dict[TicketStatus, set[TicketStatus]] = {
     TicketStatus.NEW: {TicketStatus.ACTIVE, TicketStatus.CANCELLED},
