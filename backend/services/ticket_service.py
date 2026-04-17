@@ -198,7 +198,7 @@ UI-КОНТРАКТ (КНОПКИ)
 """
 from uuid import UUID
 from core.errors import NotFound, Forbidden, InvalidTransition
-from core.ticket import TicketStatus
+from domain.ticket import TicketStatus
 
 
 class TicketService:
