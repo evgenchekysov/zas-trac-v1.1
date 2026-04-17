@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from core.deps import get_current_user_id
-from services.ticket_service import ticket_service
+from services.ticket_workflow import ticket_workflow
 
 router = APIRouter(
     prefix="/tickets",
@@ -23,7 +23,7 @@ async def create_ticket(
     Статус: NEW
     """
 
-    ticket = await ticket_service.create_ticket(
+    ticket = await ticket_workflow.create_ticket(
         creator_id=user_id
     )
 
@@ -43,7 +43,7 @@ async def list_tickets(
     Фильтрация прав — через Supabase RLS.
     """
 
-    return await ticket_service.list_tickets()
+    return await ticket_workflow.list_tickets()
 
 
 # -------------------------------------------------
@@ -60,7 +60,7 @@ async def get_ticket(
     Права доступа — через Supabase RLS.
     """
 
-    ticket = await ticket_service.get_ticket(ticket_id)
+    ticket = await ticket_workflow.get_ticket(ticket_id)
     return ticket
 
 
@@ -77,9 +77,9 @@ async def join_ticket(
     Присоединиться к заявке как participant.
     """
 
-    await ticket_service.join_ticket(
-        ticket_id=ticket_id,
-        user_id=user_id,
+    await ticket_workflow.join_ticket(
+          ticket_id=ticket_id,
+          user_id=user_id,
     )
 
     return {"joined": True}
@@ -98,9 +98,9 @@ async def leave_ticket(
     Выйти из заявки (перестать быть participant).
     """
 
-    await ticket_service.leave_ticket(
-        ticket_id=ticket_id,
-        user_id=user_id,
+    await ticket_workflow.leave_ticket(
+          ticket_id=ticket_id,
+          user_id=user_id,
     )
 
     return {"left": True}
@@ -120,9 +120,9 @@ async def mark_ticket_done(
     Может выполнить любой participant.
     """
 
-    await ticket_service.mark_done(
-        ticket_id=ticket_id,
-        user_id=user_id,
+    await ticket_workflow.mark_done(
+          ticket_id=ticket_id,
+          user_id=user_id,
     )
 
     return {"status": "DONE"}
@@ -142,9 +142,9 @@ async def close_ticket(
     Только owner или admin (проверяется сервисом + RLS).
     """
 
-    await ticket_service.close_ticket(
-        ticket_id=ticket_id,
-        user_id=user_id,
+    await ticket_workflow.close_ticket(
+          ticket_id=ticket_id,
+          user_id=user_id,
     )
 
     return {"status": "CLOSED"}
