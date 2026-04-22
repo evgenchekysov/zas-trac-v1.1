@@ -27,3 +27,34 @@ async def list_users(
     Доступ контролируется Supabase RLS (admin / worker).
     """
     return await user_service.list_users()
+
+from fastapi import Request, HTTPException
+from supabase import create_client
+from core.config import settings
+
+@router.get("/me_raw")
+async def get_me_raw(request: Request):
+    auth = request.headers.get("authorization")
+    if not auth:
+        raise HTTPException(status_code=401, detail="No Authorization header")
+
+    token = auth.replace("Bearer ", "")
+
+    supabase = create_client(
+        settings.supabase_url,
+        settings.supabase_anon_key,
+        options={
+            "global": {
+                "headers": {
+                    "Authorization": f"Bearer {token}"
+                }
+            }
+        }
+    )
+
+    result = supabase.table("users").select(
+        "id, full_name, role"
+    ).single().execute()
+
+    return result.data
+    
