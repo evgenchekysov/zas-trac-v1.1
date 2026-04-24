@@ -1,16 +1,22 @@
-# backend/core/deps.py
-from fastapi import HTTPException, Request
+from fastapi import Security, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from supabase import create_client
+from core.config import settings
 
-async def get_current_user_id(request: Request) -> str:
-    """
-    Единственный стандарт идентификации пользователя.
+security = HTTPBearer()
 
-    user_id извлекается из Supabase JWT (auth.uid).
-    frontend / bot НЕ передают user_id явно.
-    """
-    user = getattr(request.state, "user", None)
+supabase = create_client(
+    settings.SUPABASE_URL,
+    settings.SUPABASE_ANON_KEY,
+)
 
-    if not user or "sub" not in user:
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+) -> str:
+    token = credentials.credentials
+
+    res = supabase.auth.get_user(token)
+    if not res or not res.user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    return user["sub"]
+    return res.user.id

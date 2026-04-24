@@ -1,4 +1,4 @@
-class TicketWorkflow:
+class Ticket_Workflow:
     def __init__(self, ticket_service):
         self.ticket_service = ticket_service
 

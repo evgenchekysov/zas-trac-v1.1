@@ -197,7 +197,7 @@ UI-КОНТРАКТ (КНОПКИ)
 -------------------------------------------------
 """
 from uuid import UUID
-from core.errors import NotFound, Forbidden, InvalidTransition
+from core.errors import NotFound, Forbidden, InvalidStatusTransition
 from domain.ticket import TicketStatus
 
 
@@ -229,13 +229,13 @@ class TicketService:
             raise NotFound("ticket not found")
 
         
-# DONE и CLOSED — финальные, не агрегируем
-    if ticket.status in {TicketStatus.DONE, TicketStatus.CLOSED}:
-        return ticket.status
+         # DONE и CLOSED — финальные, не агрегируем
+        if ticket.status in {TicketStatus.DONE, TicketStatus.CLOSED}:
+            return ticket.status
 
-    # ✅ ЗАЩИТА NEW / ASSIGNED (рекомендуемый вариант)
-    if ticket.status in {TicketStatus.NEW, TicketStatus.ASSIGNED}:
-        return ticket.status
+        # ✅ ЗАЩИТА NEW / ASSIGNED (рекомендуемый вариант)
+        if ticket.status in {TicketStatus.NEW, TicketStatus.ASSIGNED}:
+            return ticket.status
 
 
         active_sessions = await self.session_repo.count_active_sessions(
@@ -276,7 +276,7 @@ class TicketService:
             raise NotFound("ticket not found")
 
         if ticket.status in {TicketStatus.DONE, TicketStatus.CLOSED}:
-            raise InvalidTransition("ticket already finished")
+            raise InvalidStatusTransition("ticket already finished")
 
         if not await self.ticket_repo.is_participant(ticket_id, user_id):
             raise Forbidden("user is not participant")
@@ -312,7 +312,7 @@ class TicketService:
             raise NotFound("ticket not found")
 
         if ticket.status != TicketStatus.DONE:
-            raise InvalidTransition("ticket must be DONE before closing")
+            raise InvalidStatusTransition("ticket must be DONE before closing")
 
         if not (is_admin or ticket.owner_id == user_id):
             raise Forbidden("only owner or admin can close ticket")

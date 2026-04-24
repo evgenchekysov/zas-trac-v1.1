@@ -56,7 +56,8 @@
                class="block px-3 py-2 rounded hover:bg-slate-700 text-slate-300 hover:text-white">
                Отчёты
             </a>
-
+            <a href="ticket-view.html?id=ticket-1">Открыть</a>
+            <a href="ticket-view.html?id=ticket-2">Открыть</a>
         </nav>
     </aside>
 
@@ -95,13 +96,88 @@
         </header>
 
         <!-- MAIN -->
-        <main class="p-6">
-            <h2 class="text-3xl font-bold text-slate-700">INDEX PAGE</h2>
-            <p class="text-slate-600 mt-3">Tailwind работает ✅</p>
+        <main class="p-6 space-y-6">
+
+            <!-- Заголовок -->
+            <div>
+                <h2 class="text-3xl font-bold text-slate-700">Активные заявки</h2>
+                <p class="text-slate-600 mt-1">
+                    Текущие работы и приоритеты
+                </p>
+            </div>
+
+            <!-- Список заявок -->
+            <div class="grid grid-cols-1 gap-4">
+
+                <!-- EMERGENCY -->
+                <div class="bg-white border-l-8 border-red-500 shadow rounded p-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">
+                            Авария на насосе
+                        </h3>
+
+                        <div class="flex gap-4 text-sm text-slate-600 mt-2">
+                            <span>🔴 EMERGENCY</span>                        
+                            <span>
+                            Статус:
+                            <strong class="ticket-status" data-ticket-id="ticket-1">
+                                В работе
+                            </strong>
+                            </span>
+                            <span>Оборудование: Насос №1</span>
+                        </div>
+                    </div>                    
+                    <a href="ticket-view.html?id=ticket-1"
+                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-semibold">
+                    Открыть
+                    </a>
+                </div>
+
+                <!-- NORMAL -->
+                <div class="bg-white border-l-8 border-green-500 shadow rounded p-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">
+                            Плановый осмотр
+                        </h3>
+
+                        <div class="flex gap-4 text-sm text-slate-600 mt-2">
+                            <span>🟢 NORMAL</span>                            
+                            <span>
+                            Статус:
+                            <strong class="ticket-status" data-ticket-id="ticket-2">
+                                Новая
+                            </strong>
+                            </span>
+                            <span>Оборудование: Шкаф управления</span>
+                        </div>
+                    </div>                    
+                    <a href="ticket-view.html?id=ticket-2"
+                    class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded font-semibold">
+                    Открыть
+                    </a>
+                </div>
+
+            </div>
+
         </main>
 
     </div>
+    <script>
+    function loadTicketsStatuses() {
+        document.querySelectorAll(".ticket-status").forEach(el => {
+            const ticketId = el.dataset.ticketId;
+            if (!ticketId) return;
 
+            const saved = localStorage.getItem(ticketId);
+            if (!saved) return;
+
+            const ticket = JSON.parse(saved);
+            el.textContent = ticket.status;
+        });
+    }
+
+    loadTicketsStatuses();
+    </script>
 </body>
 
 <!-- DATE/TIME SCRIPT -->
@@ -133,5 +209,4 @@ function updateDateTime() {
 updateDateTime();
 setInterval(updateDateTime, 10000);
 </script>
-
 </html>

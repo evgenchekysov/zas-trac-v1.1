@@ -2,7 +2,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from core.deps import get_current_user_id
-from services.ticket_workflow import ticket_workflow
+from services import ticket_workflow
+
+
 
 router = APIRouter(
     prefix="/tickets",

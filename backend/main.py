@@ -6,7 +6,7 @@ from routers import tickets, sessions, assets, diag
 app = FastAPI(title="ZAS-TRAC API")
 
 # Static frontend
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Routers
 app.include_router(diag.router)

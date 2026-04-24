@@ -1,4 +1,4 @@
-class SessionWorkflow:
+class Session_Workflow:
     def __init__(self, session_service, ticket_service):
         self.session_service = session_service
         self.ticket_service = ticket_service
