@@ -25,10 +25,11 @@ class Ticket_Workflow:
             user_id=user_id,
         )
 
-    async def close_ticket(self, ticket_id, user_id):
+    async def close_ticket(self, ticket_id, user_id, is_admin: bool):
         await self.ticket_service.close_ticket(
             ticket_id=ticket_id,
             user_id=user_id,
+            is_admin=is_admin
         )
 
     async def list_tickets(self):

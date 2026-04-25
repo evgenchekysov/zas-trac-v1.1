@@ -1,10 +1,11 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends
 
+
+from core.deps import get_current_user
 from core.deps import get_current_user_id
+from core.auth_models import CurrentUser
 from services import ticket_workflow
-
-
 
 router = APIRouter(
     prefix="/tickets",
@@ -134,19 +135,17 @@ async def mark_ticket_done(
 # CLOSE TICKET
 # -------------------------------------------------
 
+
 @router.post("/{ticket_id}/close")
 async def close_ticket(
     ticket_id: UUID,
-    user_id: str = Depends(get_current_user_id),
+    user: CurrentUser = Depends(get_current_user),
 ):
-    """
-    🔒 Закрыть заявку (DONE → CLOSED)
-    Только owner или admin (проверяется сервисом + RLS).
-    """
-
     await ticket_workflow.close_ticket(
-          ticket_id=ticket_id,
-          user_id=user_id,
+        ticket_id=ticket_id,
+        user_id=user.id,
+        is_admin=user.role in {"admin", "superadmin"},
     )
 
     return {"status": "CLOSED"}
+
