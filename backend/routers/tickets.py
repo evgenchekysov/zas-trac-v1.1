@@ -1,10 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends
-
-
-from core.deps import get_current_user
 from core.deps import get_current_user_id
-from core.auth_models import CurrentUser
 from services import ticket_workflow
 
 router = APIRouter(
@@ -55,7 +51,7 @@ async def list_tickets(
 
 @router.get("/{ticket_id}")
 async def get_ticket(
-    ticket_id: UUID,
+    ticket_id: int,
     user_id: str = Depends(get_current_user_id),
 ):
     """
@@ -73,7 +69,7 @@ async def get_ticket(
 
 @router.post("/{ticket_id}/join")
 async def join_ticket(
-    ticket_id: UUID,
+    ticket_id: int,
     user_id: str = Depends(get_current_user_id),
 ):
     """
@@ -94,7 +90,7 @@ async def join_ticket(
 
 @router.post("/{ticket_id}/leave")
 async def leave_ticket(
-    ticket_id: UUID,
+    ticket_id: int,
     user_id: str = Depends(get_current_user_id),
 ):
     """
@@ -115,7 +111,7 @@ async def leave_ticket(
 
 @router.post("/{ticket_id}/done")
 async def mark_ticket_done(
-    ticket_id: UUID,
+    ticket_id: int,
     user_id: str = Depends(get_current_user_id),
 ):
     """
@@ -137,15 +133,30 @@ async def mark_ticket_done(
 
 
 @router.post("/{ticket_id}/close")
+
 async def close_ticket(
-    ticket_id: UUID,
-    user: CurrentUser = Depends(get_current_user),
+    ticket_id: int,
+    user_id: str = Depends(get_current_user_id),
 ):
     await ticket_workflow.close_ticket(
         ticket_id=ticket_id,
-        user_id=user.id,
-        is_admin=user.role in {"admin", "superadmin"},
+        user_id=user_id,
+        is_admin=False,  # временно
     )
-
     return {"status": "CLOSED"}
 
+# -------------------------------------------------
+# START TICKET SESSION
+# -------------------------------------------------
+
+
+@router.post("/{ticket_id}/start")
+async def start_session(
+    ticket_id: int,
+    user_id: str = Depends(get_current_user_id),
+):
+    await ticket_workflow.start_session(
+        ticket_id=ticket_id,
+        user_id=user_id,
+    )
+    return {"started": True}

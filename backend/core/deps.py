@@ -23,24 +23,23 @@ async def get_current_user_id(
     return res.user.id
 
 
-async def get_current_user() -> CurrentUser:
-    """
-    Единая точка получения пользователя и ролей.
-    """
-    # TODO: реальная логика (JWT / Supabase)
-    user_id = ...
-    role = ...
+#async def get_current_user() -> CurrentUser:
+#    """
+#    Единая точка получения пользователя и ролей.
+#    """
+#     TODO: реальная логика (JWT / Supabase)
+#    user_id = ...
+#    role = ...
 
-    return CurrentUser(
-        id=user_id,
-        role=role,
-    )
+#    return CurrentUser(
+#        id=user_id,
+#        role=role,
+#    )
 
-
-async def get_current_user_id():
-    """
-    Legacy dependency.
-    Нужна для обратной совместимости.
-    """
-    user = await get_current_user()
-    return user.id
+#async def get_current_user_id():
+#    """
+#    Legacy dependency.
+#    Нужна для обратной совместимости.
+#    """
+#    user = await get_current_user()
+#    return user.id

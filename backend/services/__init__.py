@@ -7,15 +7,15 @@
 # -------------------------------
 from db.session_repo import SessionRepo
 from db.ticket_repo import TicketRepo
+from db.participant_repo import ParticipantRepo
 
 session_repo = SessionRepo()
 ticket_repo = TicketRepo()
+participant_repo = ParticipantRepo()
 
 # -------------------------------
 # Audit Service (WTS stub)
 # -------------------------------
-from services.audit_service import log_event
-
 class AuditService:
     async def log_event(
         self,
@@ -24,8 +24,8 @@ class AuditService:
         ticket_id: str | None = None,
         payload: dict | None = None,
     ):
-        # WTS: audit не влияет на рабочий процесс
         return None
+
 
 audit_service = AuditService()
 
@@ -44,6 +44,7 @@ session_service = SessionService(
 ticket_service = TicketService(
     ticket_repo=ticket_repo,
     session_repo=session_repo,
+    participant_repo=participant_repo,  # ✅ ЕДИНСТВЕННОЕ НОВОЕ
     audit_service=audit_service,
     session_service=session_service,
 )

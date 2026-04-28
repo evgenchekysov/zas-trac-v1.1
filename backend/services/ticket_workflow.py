@@ -37,3 +37,9 @@ class Ticket_Workflow:
 
     async def get_ticket(self, ticket_id):
         return await self.ticket_service.get_ticket(ticket_id)
+    
+    async def start_session(self, ticket_id, user_id):
+        await self.ticket_service.start_session(
+            ticket_id=ticket_id,
+            user_id=user_id,
+        )

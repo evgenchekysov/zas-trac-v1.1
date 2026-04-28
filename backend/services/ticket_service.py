@@ -206,14 +206,104 @@ class TicketService:
         self,
         ticket_repo,
         session_repo,
+        participant_repo,
         audit_service,
         session_service,
     ):
         self.ticket_repo = ticket_repo
         self.session_repo = session_repo
+        self.participant_repo = participant_repo
         self.audit = audit_service
         self.session_service = session_service
 
+    # -------------------------------------------------
+    # CREATE TICKET
+    # -------------------------------------------------
+
+    async def create_ticket(self, creator_id):
+        
+        """
+        Создание новой заявки.
+        Статус: NEW
+        """
+
+        ticket = await self.ticket_repo.create_ticket(
+            creator_id=creator_id,
+            status=TicketStatus.NEW,
+        )
+
+        await self.audit.log_event(
+            event_type="ticket_created",
+            user_id=str(creator_id),
+            ticket_id=str(ticket["id"]),
+        )
+
+        return ticket
+
+
+    # -------------------------------------------------
+    # JOIN TICKET
+    # -------------------------------------------------
+    async def join_ticket(self, ticket_id: int, user_id: str):
+        """
+        Присоединение пользователя к заявке как participant.
+        Не меняет статус заявки.
+        """
+
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        # статус из БД приходит строкой
+        status = TicketStatus(ticket["status"])
+
+        # ✅ Запрещено присоединение к завершённым тикетам
+        if status == TicketStatus.DONE:
+            raise Forbidden("cannot join finished ticket")
+
+        # ✅ Добавление участника (идемпотентно — контроль в БД)
+        await self.participant_repo.add(
+            ticket_id=ticket_id,
+            user_id=user_id,
+        )
+
+        await self.audit.log_event(
+            event_type="ticket_joined",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
+        )
+
+
+    # -------------------------------------------------
+    # LEAVE TICKET
+    # -------------------------------------------------
+    async def leave_ticket(self, ticket_id: int, user_id: str):
+        """
+        Выход пользователя из заявки (participant).
+        Не меняет статус заявки.
+        """
+
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        status = TicketStatus(ticket["status"])
+
+        # ✅ Не выходим из завершённых тикетов
+        if status == TicketStatus.DONE:
+            raise Forbidden("cannot leave finished ticket")
+
+        # ✅ Удаление участника (идемпотентно)
+        await self.participant_repo.remove(
+            ticket_id=ticket_id,
+            user_id=user_id,
+        )
+
+        await self.audit.log_event(
+            event_type="ticket_left",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
+        )
     # -------------------------------------------------
     # STATUS AGGREGATION
     # -------------------------------------------------
@@ -328,3 +418,38 @@ class TicketService:
         )
 
         return TicketStatus.CLOSED
+    
+    # -------------------------------------------------
+    # START SESSION
+    # -------------------------------------------------
+    async def start_session(self, ticket_id: int, user_id: str):
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        status = TicketStatus(ticket["status"])
+        if status == TicketStatus.DONE:
+            raise Forbidden("cannot start session on finished ticket")
+
+        # ✅ Пользователь должен быть участником
+        if not await self.participant_repo.is_participant(ticket_id, user_id):
+            raise Forbidden("user is not participant")
+
+        # ✅ Нельзя иметь две активные сессии
+        active = await self.session_repo.get_active_session(user_id)
+        if active:
+            raise Forbidden("user already has active session")
+
+        await self.session_repo.start_session(ticket_id, user_id)
+
+        # ✅ Обновляем статус тикета
+        await self.ticket_repo.update_status(
+            ticket_id,
+            TicketStatus.IN_PROGRESS.value,
+        )
+
+        await self.audit.log_event(
+            event_type="session_started",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
+        )
