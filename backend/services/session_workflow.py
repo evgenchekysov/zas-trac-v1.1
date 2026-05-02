@@ -5,11 +5,12 @@ class Session_Workflow:
 
     async def start_session(self, user_id, ticket_id):
         session = await self.session_service.start_session(user_id, ticket_id)
-        await self.ticket_service.recalc_status(ticket_id)
         return session
 
     async def stop_session(self, user_id):
         active = await self.session_service.stop_active_session(user_id)
+
         if active:
-            await self.ticket_service.recalc_status(active.ticket_id)
+            await self.ticket_service.maybe_pause_ticket(active["ticket_id"])
+
         return active

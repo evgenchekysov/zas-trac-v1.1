@@ -197,8 +197,10 @@ UI-КОНТРАКТ (КНОПКИ)
 -------------------------------------------------
 """
 from uuid import UUID
+from domain import ticket
 from core.errors import NotFound, Forbidden, InvalidStatusTransition
 from domain.ticket import TicketStatus
+
 
 
 class TicketService:
@@ -304,85 +306,44 @@ class TicketService:
             user_id=str(user_id),
             ticket_id=str(ticket_id),
         )
-    # -------------------------------------------------
-    # STATUS AGGREGATION
-    # -------------------------------------------------
-
-    async def recalc_status(self, ticket_id: UUID):
-        """
-        Агрегирует статус заявки на основе сессий.
-        Вызывается после start/stop session.
-        """
-
-        ticket = await self.ticket_repo.get(ticket_id)
-        if not ticket:
-            raise NotFound("ticket not found")
-
-        
-         # DONE и CLOSED — финальные, не агрегируем
-        if ticket.status in {TicketStatus.DONE, TicketStatus.CLOSED}:
-            return ticket.status
-
-        # ✅ ЗАЩИТА NEW / ASSIGNED (рекомендуемый вариант)
-        if ticket.status in {TicketStatus.NEW, TicketStatus.ASSIGNED}:
-            return ticket.status
-
-
-        active_sessions = await self.session_repo.count_active_sessions(
-            ticket_id
-        )
-
-        new_status = (
-            TicketStatus.IN_PROGRESS
-            if active_sessions > 0
-            else TicketStatus.PAUSED
-        )
-
-        if new_status != ticket.status:
-            await self.ticket_repo.update_status(ticket_id, new_status)
-
-            await self.audit.log_event(
-                type="ticket_status_aggregated",
-                payload={
-                    "ticket_id": str(ticket_id),
-                    "status": new_status.value,
-                },
-            )
-
-        return new_status
 
     # -------------------------------------------------
     # MARK DONE
     # -------------------------------------------------
-
     async def mark_done(self, ticket_id: UUID, user_id: UUID):
-        """
-        Завершение работ по заявке.
-        Может быть выполнено ЛЮБЫМ participant.
-        """
 
         ticket = await self.ticket_repo.get(ticket_id)
         if not ticket:
             raise NotFound("ticket not found")
 
-        if ticket.status in {TicketStatus.DONE, TicketStatus.CLOSED}:
+        status = TicketStatus(ticket["status"])
+
+        if status in {TicketStatus.DONE, TicketStatus.CLOSED}:
             raise InvalidStatusTransition("ticket already finished")
 
         if not await self.ticket_repo.is_participant(ticket_id, user_id):
             raise Forbidden("user is not participant")
 
-        # 1. Переводим заявку в DONE
-        await self.ticket_repo.update_status(ticket_id, TicketStatus.DONE)
+        # ✅ НОВОЕ ПРАВИЛО
+        active = await self.session_repo.count_active_sessions(ticket_id)
 
-        await self.audit.log_event(
-            type="ticket_marked_done",
-            payload={
-                "ticket_id": str(ticket_id),
-                "user_id": str(user_id),
-            },
+        if active == 0:
+            raise Forbidden("cannot mark DONE without active work session")
+
+        # ✅ DONE
+        await self.ticket_repo.update_status(
+            ticket_id,
+            TicketStatus.DONE.value,
         )
 
-        # 2. Завершаем ВСЕ активные сессии
+        await self.audit.log_event(
+            event_type="ticket_marked_done",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
+            payload={},
+        )
+
+        # ✅ закрываем сессии
         await self.session_service.handle_ticket_done(ticket_id)
 
         return TicketStatus.DONE
@@ -392,29 +353,30 @@ class TicketService:
     # -------------------------------------------------
 
     async def close_ticket(self, ticket_id: UUID, user_id: UUID, is_admin: bool):
-        """
-        Финальное закрытие заявки.
-        Допустимо только из DONE.
-        """
 
         ticket = await self.ticket_repo.get(ticket_id)
         if not ticket:
             raise NotFound("ticket not found")
 
-        if ticket.status != TicketStatus.DONE:
+        status = TicketStatus(ticket["status"])   # ✅
+
+        if status != TicketStatus.DONE:
             raise InvalidStatusTransition("ticket must be DONE before closing")
 
-        if not (is_admin or ticket.owner_id == user_id):
+        # ❗ тут внимательно — ticket.owner_id у тебя может быть dict
+        if not (is_admin or ticket["owner_id"] == user_id):
             raise Forbidden("only owner or admin can close ticket")
 
-        await self.ticket_repo.update_status(ticket_id, TicketStatus.CLOSED)
+        await self.ticket_repo.update_status(
+            ticket_id,
+            TicketStatus.CLOSED.value,   # ✅ .value
+        )
 
         await self.audit.log_event(
-            type="ticket_closed",
-            payload={
-                "ticket_id": str(ticket_id),
-                "user_id": str(user_id),
-            },
+            event_type="ticket_closed",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
+            payload={},
         )
 
         return TicketStatus.CLOSED
@@ -423,6 +385,7 @@ class TicketService:
     # START SESSION
     # -------------------------------------------------
     async def start_session(self, ticket_id: int, user_id: str):
+
         ticket = await self.ticket_repo.get(ticket_id)
         if not ticket:
             raise NotFound("ticket not found")
@@ -435,21 +398,58 @@ class TicketService:
         if not await self.participant_repo.is_participant(ticket_id, user_id):
             raise Forbidden("user is not participant")
 
-        # ✅ Нельзя иметь две активные сессии
-        active = await self.session_repo.get_active_session(user_id)
-        if active:
-            raise Forbidden("user already has active session")
+        # ✅ ВОТ ЭТО ГЛАВНОЕ — создаём session
+        session = await self.session_service.start_session(user_id, ticket_id)
 
-        await self.session_repo.start_session(ticket_id, user_id)
+        # ✅ статус обновляем ПОСЛЕ
+        if ticket["status"] != "IN_PROGRESS":
+            await self.ticket_repo.update_status(
+                ticket_id,
+                TicketStatus.IN_PROGRESS.value,
+            )
 
-        # ✅ Обновляем статус тикета
-        await self.ticket_repo.update_status(
-            ticket_id,
-            TicketStatus.IN_PROGRESS.value,
-        )
+        return session
+
+    # -------------------------------------------------
+    # AUTO PAUSE (CONTROLLED)
+    # -------------------------------------------------
+
+    async def maybe_pause_ticket(self, ticket_id: int):
+
+        ticket = await self.ticket_repo.get(ticket_id)
+
+        if ticket["status"] != "IN_PROGRESS":
+            return
+
+        active = await self.session_repo.count_active_sessions(ticket_id)
+
+        if active == 0:
+            await self.ticket_repo.update_status(
+                ticket_id,
+                TicketStatus.PAUSED.value,
+            )
+
 
         await self.audit.log_event(
-            event_type="session_started",
-            user_id=str(user_id),
+            event_type="ticket_auto_paused",
+            user_id="system",               # ✅ системное событие
             ticket_id=str(ticket_id),
+            payload={}
         )
+    # -------------------------------------------------
+    # LIST TICKETS (READ)
+    # -------------------------------------------------
+    async def list_tickets(self):
+        return await self.ticket_repo.get_all_tickets()
+        
+    
+    # -------------------------------------------------
+    # GET TICKET (READ)
+    # -------------------------------------------------
+    async def get_ticket(self, ticket_id: int):
+        ticket = await self.ticket_repo.get(ticket_id)
+
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        return ticket

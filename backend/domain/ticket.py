@@ -5,11 +5,11 @@ from typing import Set
 
 class TicketStatus(str, Enum):
     NEW = "NEW"
-    ACTIVE = "ACTIVE"
+    IN_PROGRESS = "IN_PROGRESS"
     PAUSED = "PAUSED"
     DONE = "DONE"
     CANCELLED = "CANCELLED"
-
+    CLOSED = "CLOSED"
 
 @dataclass
 class Ticket:

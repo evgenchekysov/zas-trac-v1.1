@@ -2,20 +2,25 @@
 # Composition Root (WTS)
 # ===============================
 
-# -------------------------------
-# Repositories
-# -------------------------------
+# -------- imports --------
+
 from db.session_repo import SessionRepo
 from db.ticket_repo import TicketRepo
 from db.participant_repo import ParticipantRepo
+
+from services.session_service import SessionService
+from services.ticket_service import TicketService
+from services.session_workflow import Session_Workflow
+from services.ticket_workflow import Ticket_Workflow
+
+# -------- repositories --------
 
 session_repo = SessionRepo()
 ticket_repo = TicketRepo()
 participant_repo = ParticipantRepo()
 
-# -------------------------------
-# Audit Service (WTS stub)
-# -------------------------------
+# -------- audit --------
+
 class AuditService:
     async def log_event(
         self,
@@ -24,16 +29,11 @@ class AuditService:
         ticket_id: str | None = None,
         payload: dict | None = None,
     ):
-        return None
-
+        print("AUDIT:", event_type, user_id, ticket_id, payload)
 
 audit_service = AuditService()
 
-# -------------------------------
-# Services
-# -------------------------------
-from services.session_service import SessionService
-from services.ticket_service import TicketService
+# -------- services --------
 
 session_service = SessionService(
     session_repo=session_repo,
@@ -44,16 +44,12 @@ session_service = SessionService(
 ticket_service = TicketService(
     ticket_repo=ticket_repo,
     session_repo=session_repo,
-    participant_repo=participant_repo,  # ✅ ЕДИНСТВЕННОЕ НОВОЕ
+    participant_repo=participant_repo,
     audit_service=audit_service,
     session_service=session_service,
 )
 
-# -------------------------------
-# Workflows
-# -------------------------------
-from services.session_workflow import Session_Workflow
-from services.ticket_workflow import Ticket_Workflow
+# -------- workflows --------
 
 session_workflow = Session_Workflow(
     session_service=session_service,

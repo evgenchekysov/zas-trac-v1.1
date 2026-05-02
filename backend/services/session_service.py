@@ -156,21 +156,23 @@ class SessionService:
         # 3. Проверяем активную сессию пользователя
         active = await self.session_repo.get_active_session(user_id)
 
+        
         # 4. Auto‑pause предыдущей сессии (если была)
         if active:
             await self.session_repo.stop_session(
-                session_id=active.id,
+                session_id=active["id"],
                 reason="auto_paused",
             )
 
             await self.audit.log_event(
-                type="session_auto_paused",
+                event_type="session_auto_paused",
+                user_id=str(user_id),
+                ticket_id=str(active["ticket_id"]),
                 payload={
-                    "session_id": str(active.id),
-                    "ticket_id": str(active.ticket_id),
-                    "user_id": str(user_id),
-                },
-            )
+                    "session_id": str(active["id"])
+                    }
+           )
+
 
         # 5. Создаём новую сессию
         session = await self.session_repo.create_session(
@@ -180,12 +182,13 @@ class SessionService:
 
         # 6. Audit
         await self.audit.log_event(
-            type="session_started",
+            event_type="session_started",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
             payload={
-                "session_id": str(session.id),
-                "ticket_id": str(ticket_id),
-                "user_id": str(user_id),
-            },
+                "session_id": str(session["id"])
+              
+            }
         )
 
         return session
@@ -206,17 +209,18 @@ class SessionService:
             return None
 
         await self.session_repo.stop_session(
-            session_id=active.id,
+            session_id=active["id"],
             reason="stopped_by_user",
         )
 
         await self.audit.log_event(
-            type="session_stopped",
+            event_type="session_stopped",
+            user_id=str(user_id),
+            ticket_id=str(active["ticket_id"]),
             payload={
-                "session_id": str(active.id),
-                "ticket_id": str(active.ticket_id),
-                "user_id": str(user_id),
-            },
+                "session_id": str(active["id"])
+               
+            }
         )
 
         return active
@@ -237,17 +241,18 @@ class SessionService:
 
         for session in sessions:
             await self.session_repo.stop_session(
-                session_id=session.id,
+                session_id=session["id"],
                 reason="status_done",
             )
 
             await self.audit.log_event(
-                type="session_stopped_due_done",
+                event_type="session_stopped_due_done",
+                user_id=str(session["user_id"]),
+                ticket_id=str(ticket_id),
                 payload={
-                    "session_id": str(session.id),
-                    "ticket_id": str(ticket_id),
-                    "user_id": str(session.user_id),
-                },
+                    "session_id": str(session["id"])
+                   
+                }
             )
           
 

@@ -114,28 +114,40 @@ session_stopped:
 # -------------------------------------------------
 # ИНТЕРФЕЙС СЕРВИСА
 # -------------------------------------------------
+class AuditService:
 
-async def log_event(
-    event_type: str,
-    user_id: str,
-    ticket_id: str | None = None,
-    payload: dict | None = None,
-):
-    """
-    Фиксирует событие в журнале аудита.
+    async def log_event(
+        self,
+        event_type: str,
+        user_id: str,
+        ticket_id: str | None = None,
+        payload: dict | None = None,
+    ):
 
-    Параметры:
-    - event_type : тип события (см. EVENTS)
-    - user_id    : auth.uid пользователя, инициировавшего действие
-    - ticket_id  : идентификатор заявки (если есть)
-    - payload    : дополнительные ФАКТИЧЕСКИЕ данные
+        """
+        Фиксирует событие в журнале аудита.
 
-    Требования:
-    - метод не выбрасывает ошибки наружу
-    - сбой логирования логируется отдельно,
-      но не влияет на основной процесс
-    """
-    raise NotImplementedError
+        Параметры:
+        - event_type : тип события (см. EVENTS)
+        - user_id    : auth.uid пользователя, инициировавшего действие
+        - ticket_id  : идентификатор заявки (если есть)
+        - payload    : дополнительные ФАКТИЧЕСКИЕ данные
+
+        Требования:
+        - метод не выбрасывает ошибки наружу
+        - сбой логирования логируется отдельно,
+            но не влияет на основной процесс
+        """
+        
+        try:
+            print("AUDIT EVENT:")
+            print("type:", event_type)
+            print("user:", user_id)
+            print("ticket:", ticket_id)
+            print("payload:", payload)
+
+        except Exception as e:
+            print("AUDIT ERROR:", e)
 
 
 # -------------------------------------------------

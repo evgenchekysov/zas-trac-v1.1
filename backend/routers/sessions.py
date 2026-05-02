@@ -1,8 +1,7 @@
 from uuid import UUID
+from services import session_workflow
 from fastapi import APIRouter, Depends
-
 from core.deps import get_current_user_id
-from services.session_workflow import Session_Workflow
 
 router = APIRouter(
     prefix="/sessions",
@@ -11,10 +10,10 @@ router = APIRouter(
 
 @router.post("/start/{ticket_id}")
 async def start_session(
-    ticket_id: UUID,
+    ticket_id: int,
     user_id: str = Depends(get_current_user_id),
 ):
-    session = await Session_Workflow.start_session(
+    session = await session_workflow.start_session(
         user_id=user_id,
         ticket_id=ticket_id,
     )
@@ -24,6 +23,6 @@ async def start_session(
 async def stop_active_session(
     user_id: str = Depends(get_current_user_id),
 ):
-    active = await Session_Workflow.stop_session(user_id)
+    active = await session_workflow.stop_session(user_id)
     return {"stopped": active is not None}
 
