@@ -1,8 +1,7 @@
 from fastapi import Security, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import create_client
 from core.config import settings
-from core.auth_models import CurrentUser, Role
 
 security = HTTPBearer()
 
@@ -11,38 +10,19 @@ supabase = create_client(
     settings.SUPABASE_ANON_KEY,
 )
 
-#async def get_current_user_id(
-#    credentials: HTTPAuthorizationCredentials = Security(security),
-#) -> str:
-#    token = credentials.credentials
+def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Security(security),
+) -> str:
 
-#    res = supabase.auth.get_user(token)
-#    if not res or not res.user:
-#        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = credentials.credentials
 
-#    return res.user.id
+    try:
+        res = supabase.auth.get_user(token)
 
+        if not res or not res.user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
 
-#async def get_current_user() -> CurrentUser:
-#    """
-#    Единая точка получения пользователя и ролей.
-#    """
-#     TODO: реальная логика (JWT / Supabase)
-#    user_id = ...
-#    role = ...
+        return res.user.id
 
-#    return CurrentUser(
-#        id=user_id,
-#        role=role,
-#    )
-
-#async def get_current_user_id():
-#    """
-#    Legacy dependency.
-#    Нужна для обратной совместимости.
-#    """
-#    user = await get_current_user()
-#    return user.id
-
-async def get_current_user_id():
-    return "f5f5d7b6-c390-42e9-b1b7-eea970145ee0"
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")

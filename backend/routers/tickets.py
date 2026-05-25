@@ -1,33 +1,36 @@
-from uuid import UUID
 from fastapi import APIRouter, Depends
+from supabase import create_client
+from core.config import settings
 from core.deps import get_current_user_id
-from services import ticket_workflow
 
 router = APIRouter(
     prefix="/tickets",
     tags=["tickets"],
 )
 
+# ✅ ВАЖНО: service key вместо anon
+supabase = create_client(
+    settings.SUPABASE_URL,
+    settings.SUPABASE_SERVICE_KEY
+)
+
 # -------------------------------------------------
 # CREATE TICKET
 # -------------------------------------------------
 
+
 @router.post("/")
-async def create_ticket(
-    user_id: str = Depends(get_current_user_id),
-):
-    """
-    Создание заявки.
-    creator фиксируется автоматически.
-    Статус: NEW
-    """
+async def create_ticket(data: dict):
+    try:
+        res = supabase.table("tickets").insert({
+            "description": data.get("description"),
+            "status": "NEW"
+        }).execute()
 
-    ticket = await ticket_workflow.create_ticket(
-        creator_id=user_id
-    )
+        return res.data
 
-    return ticket
-
+    except Exception as e:
+        return {"error": str(e)}
 
 # -------------------------------------------------
 # LIST TICKETS
@@ -37,13 +40,8 @@ async def create_ticket(
 async def list_tickets(
     user_id: str = Depends(get_current_user_id),
 ):
-    """
-    Список доступных заявок.
-    Фильтрация прав — через Supabase RLS.
-    """
-
-    return await ticket_workflow.list_tickets()
-
+    res = supabase.table("tickets").select("*").execute()
+    return res.data
 
 # -------------------------------------------------
 # GET TICKET DETAILS

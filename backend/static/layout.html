@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ZAS‑TRAC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body class="bg-slate-100 flex min-h-screen">
+
+<!-- SIDEBAR -->
+<aside class="bg-slate-900 text-white w-64 p-6 hidden md:block">
+  
+    <div class="flex flex-col items-start mb-8">
+
+        <img src="/static/assets/zas-trac_icon_ZT_v1.svg"
+            class="h-12 w-12 mb-1 brightness-0 invert opacity-90"/>
+
+        <span class="text-lg text-slate-300 tracking-wide">
+            ZAS‑TRAC
+        </span>
+
+    </div>
+
+    <nav class="space-y-2">
+        
+        <a href="tickets-dispatcher.html"
+            class="block px-3 py-3 rounded hover:bg-slate-700 bg-slate-800 font-semibold">
+            Диспетчер
+        </a>
+
+        <a href="my-tickets.html"
+           class="block px-3 py-3 rounded hover:bg-slate-700 bg-slate-800 font-semibold">
+            Мои заявки
+        </a>
+
+        <a href="reports.html"
+           class="block px-3 py-3 rounded hover:bg-slate-700 bg-slate-800 font-semibold">
+            Отчёты
+        </a>
+
+    </nav>
+
+</aside>
+
+
+<!-- MAIN -->
+<div class="flex-1 flex flex-col">
+
+
+<header class="bg-white shadow h-20 flex items-center justify-between px-6">
+
+    <!-- LEFT -->
+    
+    <div class="flex items-center gap-4">
+
+        <span class="text-2xl font-semibold text-slate-700 tracking-wide">
+            ДИСПЕТЧЕРСКАЯ
+        </span>
+
+    </div>
+
+
+    <!-- RIGHT -->
+    <div class="flex items-center gap-6">
+
+        <!-- Henkel -->
+        
+        <img src="/static/assets/henkel.svg"
+            class="h-12 object-contain opacity-80"/>
+
+
+        <button onclick="logout()"
+                class="bg-red-500 text-white px-3 py-1 rounded">
+            Выход
+        </button>
+
+    </div>
+
+</header>
+
+<main id="content" class="p-6">
+
+<!-- СЮДА ВСТАВЛЯЕТСЯ КОНТЕНТ -->
+
+</main>
+
+</div>
+
+<script>
+function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ZAS‑TRAC | Диспетчер</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body class="bg-slate-100 flex min-h-screen">
+
+<!-- SIDEBAR -->
+<aside class="bg-slate-900 text-white w-64 p-6 hidden md:flex flex-col">
+
+    <!-- LOGO -->
+    <div class="mb-8">
+        <img src="/static/assets/zas-trac_icon_ZT_v1.svg"
+             class="h-12 w-12 mb-2 brightness-0 invert opacity-90">
+
+        <span class="text-lg text-slate-300 tracking-wide">
+            ZAS‑TRAC
+        </span>
+    </div>
+
+    <!-- NAV -->
+    <nav class="space-y-2">
+        <a href="dispatcher.html"
+           class="block px-3 py-3 rounded bg-slate-800 font-semibold">
+            Диспетчер
+        </a>
+
+        <a href="my-tickets.html"
+           class="block px-3 py-3 rounded hover:bg-slate-700">
+            Мои заявки
+        </a>
+
+        <a href="reports.html"
+           class="block px-3 py-3 rounded hover:bg-slate-700">
+            Отчёты
+        </a>
+    </nav>
+
+</aside>
+
+
+<!-- MAIN -->
+<div class="flex-1 flex flex-col">
+
+    <!-- HEADER -->
+    <header class="bg-white shadow h-20 flex items-center justify-between px-6">
+
+        <div class="text-2xl font-semibold text-slate-700">
+            ДИСПЕТЧЕРСКАЯ
+        </div>
+
+        <div class="flex items-center gap-6">
+            <img src="/static/assets/henkel.svg"
+                 class="h-12 opacity-80">
+
+            <button onclick="logout()"
+                    class="bg-red-500 text-white px-3 py-1 rounded">
+                Выход
+            </button>
+        </div>
+
+    </header>
+
+
+    <!-- CONTENT -->
+    <main class="p-6">
+
+        <!-- TABS -->
+        <div class="flex gap-6 mb-6 border-b pb-2">
+
+            <button onclick="switchTab('tickets')"
+                    id="btn-tickets"
+                    class="font-semibold text-blue-600 border-b-2 border-blue-600 pb-1">
+                Реестр
+            </button>
+
+            <button onclick="switchTab('timeline')"
+                    id="btn-timeline"
+                    class="text-slate-500 hover:text-blue-600">
+                График
+            </button>
+
+        </div>
+
+        <!-- TICKETS -->
+        <div id="tickets-view">
+            <div id="tickets" class="space-y-3"></div>
+        </div>
+
+        <!-- TIMELINE -->
+        <div id="timeline-view" class="hidden">
+            <div id="timeline" class="space-y-2"></div>
+        </div>
+
+    </main>
+
+</div>
+
+
+<script src="/static/js/dispatcher.js"></script>
+
+</body>
+</html>
