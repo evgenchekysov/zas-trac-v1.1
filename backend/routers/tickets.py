@@ -20,15 +20,15 @@ supabase = create_client(
 
 
 @router.post("/")
+@router.post("/")
 async def create_ticket(data: dict):
     try:
         res = supabase.table("tickets").insert({
             "description": data.get("description"),
-            "status": "NEW"
+            "status": "NEW",
+            "asset_qr": data.get("asset_qr"),
         }).execute()
-
         return res.data
-
     except Exception as e:
         return {"error": str(e)}
 
@@ -40,8 +40,18 @@ async def create_ticket(data: dict):
 async def list_tickets(
     user_id: str = Depends(get_current_user_id),
 ):
-    res = supabase.table("tickets").select("*").execute()
-    return res.data
+   
+     res = supabase.table("tickets").select("""
+        id,
+        description,
+        status,
+        asset_qr,
+        assets (
+            name,
+            location
+        )
+    """).order("id", desc=True).execute()
+     return res.data
 
 # -------------------------------------------------
 # GET TICKET DETAILS

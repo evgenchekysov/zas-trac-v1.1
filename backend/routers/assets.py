@@ -1,9 +1,27 @@
-from fastapi import APIRouter, Depends
-from core.deps import get_current_user_id
+from fastapi import APIRouter
+from db.pool import get_pool
 
 router = APIRouter(
-    prefix="/assets",
+    prefix="/api/assets",
     tags=["assets"],
 )
 
-# Эндпоинты будут добавлены позже (admin-only, через RLS)
+@router.get("/")
+@router.get("")
+async def get_assets():
+    pool = await get_pool()
+
+    rows = await pool.fetch("""
+        SELECT qr_code, name, location
+        FROM assets
+        ORDER BY name
+    """)
+
+    return [
+        {
+            "qr_code": r["qr_code"],
+            "name": r["name"],
+            "location": r["location"],
+        }
+        for r in rows
+    ]
