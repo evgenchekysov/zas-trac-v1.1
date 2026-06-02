@@ -8,19 +8,29 @@ export default function TicketCard({ ticket }) {
   };
 
   return (
-    <div className="bg-white p-4 rounded shadow hover:shadow-md transition border">
+    <div className="bg-white p-4 rounded shadow border">
 
-      <div className="flex justify-between items-center">
-
-        {/* У тебя description вместо title */}
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-1">
         <div className="font-semibold">
           {ticket.description || "Без описания"}
         </div>
 
-        <div className={`text-sm ${statusColor[ticket.status]}`}>
+        <div className={`text-sm font-medium ${statusColor[ticket.status]}`}>
           {ticket.status}
         </div>
+      </div>
 
+      {/* ✅ ОБОРУДОВАНИЕ */}
+      {ticket.assets && (
+        <div className="text-sm text-slate-500">
+          {ticket.assets.name} — {ticket.assets.location}
+        </div>
+      )}
+
+      {/* ДОП. */}
+      <div className="text-xs text-slate-400 mt-1">
+        #{ticket.id}
       </div>
 
     </div>

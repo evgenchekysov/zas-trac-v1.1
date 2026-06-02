@@ -45,8 +45,12 @@ export default function Dispatcher() {
 
                 <div className="text-sm text-slate-500">
                   {t.description || "Без описания"}
-                </div>
-
+                </div>                 
+                  {t.assets && (
+                      <div className="text-sm text-slate-500">
+                      {t.assets.name} — {t.assets.location}
+                      </div>
+                    )}
                 <div className="text-xs mt-1 text-blue-500">
                   {t.status}
                 </div>
