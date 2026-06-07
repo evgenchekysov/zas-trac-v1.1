@@ -1,6 +1,22 @@
 import { NavLink } from "react-router-dom";
 
 export default function Sidebar() {
+  const menu = [
+    { label: "Заявки", path: "/work" },
+    { label: "Диспетчерская", path: "/dispatcher" },
+    { label: "Таймлайн", path: "/timeline" },
+    { label: "Отчёты", path: "/reports" },
+    { label: "Аналитика", path: "/analytics" },
+    { label: "Настройки", path: "/settings" },
+  ];
+
+  const linkClass = ({ isActive }) =>
+    `block px-4 py-2 rounded transition ${
+      isActive
+        ? "bg-slate-800 text-white"
+        : "text-slate-300 hover:bg-slate-800 hover:text-white"
+    }`;
+
   return (
     <aside className="bg-slate-900 text-white w-64 min-h-screen p-6 flex flex-col">
 
@@ -15,40 +31,23 @@ export default function Sidebar() {
         </span>
       </div>
 
-      {/* NAVIGATION */}
+      {/* NAV */}
       <nav className="space-y-2">
-
-        <NavLink
-          to="/dispatcher"
-          className={({ isActive }) =>
-            `block px-4 py-2 rounded transition ${
-              isActive
-                ? "bg-slate-800 text-white"
-                : "text-slate-300 hover:bg-slate-800 hover:text-white"
-            }`
-          }
-        >
-          Диспетчер
-        </NavLink>
-
-        <NavLink
-          to="/my-tickets"
-          className={({ isActive }) =>
-            `block px-4 py-2 rounded transition ${
-              isActive
-                ? "bg-slate-800 text-white"
-                : "text-slate-300 hover:bg-slate-800 hover:text-white"
-            }`
-          }
-        >
-          Мои заявки
-        </NavLink>
-
+        {menu.map(item => (
+          <NavLink key={item.path} to={item.path} className={linkClass}>
+            {item.label}
+          </NavLink>
+        ))}
       </nav>
 
-      {/* FOOTER (опционально) */}
-      <div className="mt-auto text-xs text-slate-500 pt-6">
-        v0.1 ZAS‑TRAC
+      {/* BACK */}
+      <div className="mt-auto pt-6">
+        <button
+          onClick={() => window.history.back()}
+          className="w-full text-left px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition"
+        >
+          ← Назад
+        </button>
       </div>
 
     </aside>
