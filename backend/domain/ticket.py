@@ -5,6 +5,7 @@ from typing import Set
 
 class TicketStatus(str, Enum):
     NEW = "NEW"
+    ASSIGNED = "ASSIGNED"
     IN_PROGRESS = "IN_PROGRESS"
     PAUSED = "PAUSED"
     DONE = "DONE"

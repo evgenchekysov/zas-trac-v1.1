@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from supabase import create_client
 from core.config import settings
 from core.deps import get_current_user_id
+from services import ticket_workflow
 
 router = APIRouter(
     prefix="/tickets",
@@ -168,3 +169,19 @@ async def start_session(
         user_id=user_id,
     )
     return {"started": True}
+
+# -------------------------------------------------
+# STOP TICKET SESSION
+# -------------------------------------------------
+
+
+@router.post("/{ticket_id}/stop")
+async def stop_session(
+    ticket_id: int,
+    user_id: str = Depends(get_current_user_id),
+):
+    await ticket_workflow.stop_session(
+        ticket_id=ticket_id,
+        user_id=user_id,
+    )
+    return {"stopped": True}

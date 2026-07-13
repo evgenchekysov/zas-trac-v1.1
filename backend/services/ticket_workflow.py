@@ -1,3 +1,5 @@
+from domain.ticket import TicketStatus
+
 class Ticket_Workflow:
     def __init__(self, ticket_service):
         self.ticket_service = ticket_service
@@ -39,7 +41,37 @@ class Ticket_Workflow:
         return await self.ticket_service.get_ticket(ticket_id)
     
     async def start_session(self, ticket_id, user_id):
+
+        ticket = await self.ticket_service.get_ticket(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        status = TicketStatus(ticket["status"])
+
+        # ✅ проверка допустимого перехода (ADR‑003)
+        if status not in {
+            TicketStatus.NEW,
+            TicketStatus.PAUSED,
+            TicketStatus.ASSIGNED,
+        }:
+            raise InvalidStatusTransition("cannot start")
+
+        # ✅ создаём session (ADR‑006)
         await self.ticket_service.start_session(
             ticket_id=ticket_id,
             user_id=user_id,
         )
+
+        # ✅ МЕНЯЕМ СТАТУС (ТОЛЬКО ТУТ!)
+        if status != TicketStatus.IN_PROGRESS:
+            await self.ticket_service.ticket_repo.update_status(
+                ticket_id,
+                TicketStatus.IN_PROGRESS.value,
+            )
+
+    async def stop_session(self, ticket_id, user_id):
+
+        await self.ticket_service.stop_session(
+        ticket_id=ticket_id,
+        user_id=user_id,
+    )

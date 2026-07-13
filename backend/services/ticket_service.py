@@ -381,8 +381,8 @@ class TicketService:
 
         return TicketStatus.CLOSED
     
-    # -------------------------------------------------
-    # START SESSION
+   # -------------------------------------------------
+    # START SESSION (LOW LEVEL)
     # -------------------------------------------------
     async def start_session(self, ticket_id: int, user_id: str):
 
@@ -391,24 +391,21 @@ class TicketService:
             raise NotFound("ticket not found")
 
         status = TicketStatus(ticket["status"])
+
         if status == TicketStatus.DONE:
             raise Forbidden("cannot start session on finished ticket")
 
-        # ✅ Пользователь должен быть участником
-        if not await self.participant_repo.is_participant(ticket_id, user_id):
-            raise Forbidden("user is not participant")
+        # ✅ если пользователь не participant — добавляем
+        is_participant = await self.participant_repo.is_participant(ticket_id, user_id)
 
-        # ✅ ВОТ ЭТО ГЛАВНОЕ — создаём session
-        session = await self.session_service.start_session(user_id, ticket_id)
-
-        # ✅ статус обновляем ПОСЛЕ
-        if ticket["status"] != "IN_PROGRESS":
-            await self.ticket_repo.update_status(
-                ticket_id,
-                TicketStatus.IN_PROGRESS.value,
+        if not is_participant:
+            await self.participant_repo.add(
+                ticket_id=ticket_id,
+                user_id=user_id,
             )
 
-        return session
+        # ✅ только создаём session
+        return await self.session_service.start_session(user_id, ticket_id)
 
     # -------------------------------------------------
     # AUTO PAUSE (CONTROLLED)
@@ -453,3 +450,21 @@ class TicketService:
             raise NotFound("ticket not found")
 
         return ticket
+    # -------------------------------------------------
+    # STOP SESSION
+    # -------------------------------------------------
+    async def stop_session(self, ticket_id: int, user_id: str):
+
+        ticket = await self.ticket_repo.get(ticket_id)
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        status = TicketStatus(ticket["status"])
+        if status == TicketStatus.DONE:
+            raise Forbidden("cannot stop session on finished ticket")
+
+       # ✅ ВОТ ЭТО ГЛАВНОЕ — останавливаем session
+        await self.session_service.stop_active_session(user_id)
+
+        # ✅ статус обновляем ПОСЛЕ
+        await self.maybe_pause_ticket(ticket_id)
