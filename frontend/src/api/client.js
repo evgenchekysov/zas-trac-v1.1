@@ -5,18 +5,30 @@ export async function apiFetch(path, options = {}) {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
       Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
     },
   });
 
-  
+  // ✅ ГЛАВНОЕ ПРАВИЛО
   if (res.status === 401) {
-    console.log("❗ NOT AUTHORIZED");
-    return { error: "unauthorized" };
+    localStorage.removeItem("token");
+
+    // однократный редирект
+    window.location.href = "/login";
+
+    throw new Error("Unauthorized");
   }
 
-  const data = await res.json();
+  let data = {};
+
+  try {
+    data = await res.json();
+  } catch {}
+
+  if (!res.ok) {
+    throw new Error(data.detail || "Ошибка запроса");
+  }
 
   return data;
 }

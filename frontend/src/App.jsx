@@ -8,6 +8,7 @@ import Timeline from "./pages/Timeline";
 import Reports from "./pages/Reports";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import TicketPage from "./pages/TicketPage";
 
 console.log("✅ NEW BUILD WORK ROUTE");
 
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/tickets/:id" element={<TicketPage />} />
       </Routes>
     </BrowserRouter>
   );

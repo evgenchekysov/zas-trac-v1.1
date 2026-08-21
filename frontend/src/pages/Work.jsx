@@ -7,24 +7,41 @@ export default function Work() {
 
   const currentUserId = "<test_user_id>";
 
-  useEffect(() => {
+  // ✅ ОТДЕЛЬНАЯ ФУНКЦИЯ ЗАГРУЗКИ
+  async function loadTickets() {
     const token = localStorage.getItem("token");
 
-    fetch("/tickets/", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setTickets(data);
-        } else {
-          setTickets([]);
-        }
-      })
-      .catch(() => setTickets([]));
+    try {
+      const res = await fetch("/tickets/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        setTickets(data);
+      } else {
+        setTickets([]);
+      }
+    } catch {
+      setTickets([]);
+    }
+  }
+
+  // ✅ AUTO REFRESH
+  useEffect(() => {
+    loadTickets();
+
+    const interval = setInterval(() => {
+      loadTickets();
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  // ✅ helpers
 
   const isParticipant = (ticket) =>
     ticket.participants?.some((p) => p.user_id === currentUserId);
@@ -54,6 +71,8 @@ export default function Work() {
       ["ASSIGNED", "IN_PROGRESS", "PAUSED"].includes(t.status)
   );
 
+  // ✅ UI
+
   return (
     <Layout title="Заявки">
       <div className="space-y-6">
@@ -61,11 +80,9 @@ export default function Work() {
         {/* 🚨 СРОЧНО */}
         {emergency.length > 0 && (
           <section>
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-lg font-bold text-red-600">
-                🚨 Срочно ({emergency.length})
-              </h2>
-            </div>
+            <h2 className="text-lg font-bold text-red-600 mb-2">
+              🚨 Срочно ({emergency.length})
+            </h2>
 
             <div className="space-y-2">
               {emergency.map((t) => (
@@ -77,11 +94,9 @@ export default function Work() {
 
         {/* 👤 МОИ */}
         <section>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold">
-              Мои заявки ({myTickets.length})
-            </h2>
-          </div>
+          <h2 className="text-lg font-semibold mb-2">
+            Мои заявки ({myTickets.length})
+          </h2>
 
           {myTickets.length === 0 && (
             <div className="text-slate-400">
@@ -98,11 +113,9 @@ export default function Work() {
 
         {/* 🆕 НОВЫЕ */}
         <section>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold">
-              Новые ({newTickets.length})
-            </h2>
-          </div>
+          <h2 className="text-lg font-semibold mb-2">
+            Новые ({newTickets.length})
+          </h2>
 
           {newTickets.length === 0 && (
             <div className="text-slate-400">
@@ -119,11 +132,9 @@ export default function Work() {
 
         {/* 📂 ДОСТУПНЫЕ */}
         <section>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold">
-              Доступные ({availableTickets.length})
-            </h2>
-          </div>
+          <h2 className="text-lg font-semibold mb-2">
+            Доступные ({availableTickets.length})
+          </h2>
 
           {availableTickets.length === 0 && (
             <div className="text-slate-400">

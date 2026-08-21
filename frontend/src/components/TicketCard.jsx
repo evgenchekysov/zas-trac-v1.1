@@ -1,7 +1,16 @@
 import { useNavigate } from "react-router-dom";
+import {
+  joinTicket,
+  startTicket,
+  stopTicket
+} from "../api/tickets";
 
 export default function TicketCard({ ticket }) {
   const navigate = useNavigate();
+  const status = ticket.status?.toUpperCase();
+  const isParticipant = ticket.participants?.some(
+  (p) => p.user_id === "<test_user_id>"
+  );
 
   const statusColor = {
     NEW: "text-gray-500",
@@ -13,14 +22,31 @@ export default function TicketCard({ ticket }) {
   };
 
   const handleClick = () => {
+    console.log("CLICK CARD", ticket.id);
     navigate(`/tickets/${ticket.id}`);
   };
 
   const stop = (e) => e.stopPropagation();
 
+
+  async function handleAction(fn, e) {
+    e.stopPropagation();
+
+    try {
+      await fn(ticket.id);
+
+      window.reloadDispatcher?.(); // ✅ ВОТ ЭТО КЛЮЧ
+      window.reloadTickets?.();    // ✅ для /work
+
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+
   return (
     <div
-      onClick={handleClick}
+      onClick={(e) => handleClick(e)}
       className="bg-white p-4 rounded shadow border cursor-pointer hover:bg-slate-50 transition"
     >
 
@@ -30,7 +56,7 @@ export default function TicketCard({ ticket }) {
           {ticket.description || "Без описания"}
         </div>
 
-        <div className={`text-sm font-medium ${statusColor[ticket.status]}`}>
+        <div className={`text-sm font-medium ${statusColor[status]}`}>
           {ticket.status}
         </div>
       </div>
@@ -50,42 +76,27 @@ export default function TicketCard({ ticket }) {
       {/* ACTIONS */}
       <div className="mt-3 flex gap-2">
 
-        {/* NEW → JOIN */}
-        {ticket.status === "NEW" && (
-          <button
-            onClick={(e) => {
-              stop(e);
-              console.log("JOIN", ticket.id);
-            }}
-            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-          >
-            Присоединиться
-          </button>
-        )}
-
-        {/* ASSIGNED / PAUSED → START */}
-        {["ASSIGNED", "PAUSED"].includes(ticket.status) && (
-          <button
-            onClick={(e) => {
-              stop(e);
-              console.log("START", ticket.id);
-            }}
-            className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-          >
+        {/* START */}
+        {["NEW", "ASSIGNED", "PAUSED"].includes(status) && (
+          <button onClick={(e) => handleAction(startTicket, e)} 
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
             Начать
           </button>
         )}
 
-        {/* IN_PROGRESS → STOP */}
-        {ticket.status === "IN_PROGRESS" && (
-          <button
-            onClick={(e) => {
-              stop(e);
-              console.log("STOP", ticket.id);
-            }}
-            className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
-          >
+        {/* STOP */}
+        {status === "IN_PROGRESS" && (
+          <button onClick={(e) => handleAction(stopTicket, e)} 
+          className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">
             Остановить
+          </button>
+        )}
+
+        {/* JOIN */}
+        {["IN_PROGRESS", "PAUSED"].includes(status) && !isParticipant && (
+          <button onClick={(e) => handleAction(joinTicket, e)} 
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+            Присоединиться
           </button>
         )}
 
