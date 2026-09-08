@@ -4,10 +4,10 @@ import Layout from "../components/Layout";
 
 import {
   startTicket,
-  stopTicket,  
+  stopTicket,
   getTicket,
   doneTicket,
-  closeTicket
+  closeTicket,
 } from "../api/tickets";
 
 export default function TicketPage() {
@@ -20,11 +20,11 @@ export default function TicketPage() {
     const data = await getTicket(id);
     setTicket(data);
   }
-    
-    useEffect(() => {
-      loadTicket();
-      window.reloadTicket = loadTicket;
-    }, [id]);
+
+  useEffect(() => {
+    loadTicket();
+    window.reloadTicket = loadTicket;
+  }, [id]);
 
   async function handleAction(fn) {
     try {
@@ -45,7 +45,6 @@ export default function TicketPage() {
     }
   }
 
-
   if (!ticket) {
     return (
       <Layout>
@@ -53,7 +52,7 @@ export default function TicketPage() {
       </Layout>
     );
   }
-  
+
   const statusLabels = {
     NEW: "Новая",
     ASSIGNED: "Назначена",
@@ -63,7 +62,6 @@ export default function TicketPage() {
     CLOSED: "Закрыта",
   };
 
-  
   const statusColors = {
     NEW: "text-red-500",
     ASSIGNED: "text-blue-600",
@@ -71,6 +69,18 @@ export default function TicketPage() {
     PAUSED: "text-orange-500",
     DONE: "text-green-600",
     CLOSED: "text-slate-400",
+  };
+
+  const priorityLabels = {
+    EMERGENCY: "Аварийный",
+    NORMAL: "Обычный",
+    PLANNED: "Плановый",
+  };
+
+  const priorityColors = {
+    EMERGENCY: "text-red-600",
+    NORMAL: "text-blue-600",
+    PLANNED: "text-slate-500",
   };
 
   return (
@@ -84,7 +94,27 @@ export default function TicketPage() {
 
         {/* СТАТУС */}
         <div>
-          <b>Статус:</b> {statusLabels[ticket.status?.toUpperCase()] || ticket.status}
+          <b>Статус:</b>{" "}
+          {statusLabels[ticket.status?.toUpperCase()] || ticket.status}
+        </div>
+
+        {/* PRIORITY */}
+        <div>
+          <b>Приоритет:</b>{" "}
+          <span
+            className={
+              priorityColors[ticket.priority] ||
+              "text-slate-500"
+            }
+          >
+            {priorityLabels[ticket.priority] || ticket.priority || "Обычный"}
+          </span>
+        </div>
+
+        {/* PRIORITY STATE */}
+        <div>
+          <b>Состояние приоритета:</b>{" "}
+          {ticket.priority_state || "OPEN"}
         </div>
 
         {/* ОБОРУДОВАНИЕ */}
@@ -98,6 +128,7 @@ export default function TicketPage() {
         {/* ОПИСАНИЕ */}
         <div>
           <b>Описание:</b>
+
           <div className="mt-1 p-3 bg-white rounded border">
             {ticket.description || "—"}
           </div>
