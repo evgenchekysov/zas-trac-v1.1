@@ -468,3 +468,69 @@ class TicketService:
 
         # ✅ статус обновляем ПОСЛЕ
         await self.maybe_pause_ticket(ticket_id)
+    # -------------------------------------------------
+    # CHANGE PRIORITY
+    # -------------------------------------------------
+
+    async def change_priority(
+        self,
+        ticket_id: int,
+        priority: TicketPriority,
+        user_id: str,
+    ):
+        ticket = await self.ticket_repo.get(ticket_id)
+
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        if ticket["priority_state"] == "LOCKED":
+            raise Forbidden("priority is locked")
+
+        old_priority = ticket["priority"]
+
+        await self.ticket_repo.update_priority(
+            ticket_id=ticket_id,
+            priority=priority,
+        )
+
+        await self.audit.log_event(
+            event_type="ticket_priority_changed",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
+            payload={
+                "old_priority": old_priority,
+                "new_priority": priority.value,
+            },
+        )
+
+        return priority
+
+    # -------------------------------------------------
+    # LOCK PRIORITY
+    # -------------------------------------------------
+
+    async def lock_priority(
+        self,
+        ticket_id: int,
+        user_id: str,
+    ):
+        ticket = await self.ticket_repo.get(ticket_id)
+
+        if not ticket:
+            raise NotFound("ticket not found")
+
+        if ticket["priority_state"] == "LOCKED":
+            raise Forbidden("priority already locked")
+
+        await self.ticket_repo.lock_priority(
+            ticket_id=ticket_id,
+        )
+
+        await self.audit.log_event(
+            event_type="ticket_priority_locked",
+            user_id=str(user_id),
+            ticket_id=str(ticket_id),
+            payload={},
+        )
+
+        return True
