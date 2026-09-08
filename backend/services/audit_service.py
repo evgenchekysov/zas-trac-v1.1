@@ -66,6 +66,11 @@ EVENTS = [
 
     # system actions
     "session_auto_paused",
+
+    # ADR‑008
+    "ticket_priority_changed",
+    "ticket_priority_locked",
+    
 ]
 
 
