@@ -6,6 +6,49 @@ from fastapi.responses import FileResponse
 # ✅ APP
 app = FastAPI(title="ZAS-TRAC API")
 
+from fastapi.responses import JSONResponse
+
+from core.errors import (
+    NotFound,
+    Forbidden,
+    InvalidStatusTransition,
+)
+# -------------------------------------------------
+# ERROR HANDLERS
+# -------------------------------------------------
+
+@app.exception_handler(NotFound)
+async def not_found_handler(request: Request, exc: NotFound):
+    return JSONResponse(
+        status_code=404,
+        content={
+            "detail": str(exc),
+        },
+    )
+
+
+@app.exception_handler(Forbidden)
+async def forbidden_handler(request: Request, exc: Forbidden):
+    return JSONResponse(
+        status_code=403,
+        content={
+            "detail": str(exc),
+        },
+    )
+
+
+@app.exception_handler(InvalidStatusTransition)
+async def transition_handler(
+    request: Request,
+    exc: InvalidStatusTransition,
+):
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": str(exc),
+        },
+    )
+
 # ✅ LOGGER
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

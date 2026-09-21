@@ -199,9 +199,7 @@ UI-КОНТРАКТ (КНОПКИ)
 from uuid import UUID
 from domain import ticket
 from core.errors import NotFound, Forbidden, InvalidStatusTransition
-from domain.ticket import TicketStatus
-
-
+from domain.ticket import TicketStatus, TicketPriority
 
 class TicketService:
     def __init__(
